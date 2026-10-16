@@ -3,5 +3,4 @@
 // 예) SERVER_URL: "https://script.google.com/macros/s/AKfycb.../exec"
 // 비워 두면(또는 주소 형식이 아니면) '게스트 체험'만 할 수 있어요.
 window.ELEC_RPG_CONFIG = {
-  SERVER_URL: "https://script.google.com/macros/s/AKfycbx1aX3MAG3P6cSgB8MDrNRvUAr7Yo3jVovGcdFIOHQZGdM0q6kmckUWX9mWsNr3s7RH/exec"
-};
+  SERVER_URL: "https://script.google.com/macros/s/AKfycbx1aX3MAG3P6cSgB8MDrNRvUAr7Yo3jVovGcdFIOHQZGdM0q6kmckUWX9mWsNr3s7RH/exec"};
