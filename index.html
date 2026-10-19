@@ -24,7 +24,7 @@
   .hbtn { border: 1px solid #3a4c64; background: #1d2a3b; color: #eee; border-radius: 999px; padding: 4px 11px; font-size: 12px; cursor: pointer; font-family: inherit; }
   .hbtn:disabled { opacity: .4; }
   canvas#game { width: 100%; max-width: 720px; image-rendering: pixelated; border: 4px solid #000; border-radius: 6px; background: #000; touch-action: manipulation; }
-  .controls { display: flex; gap: 36px; align-items: center; margin-top: 12px; }
+  .controls { display: flex; gap: 56px; align-items: center; justify-content: center; margin-top: 12px; width: 100%; max-width: 720px; }
   .dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 4px; }
   .dpad button, .abtn { font-size: 22px; border-radius: 12px; border: 0; background: #34465c; color: #fff; touch-action: none; }
   .dpad button:active, .abtn:active { background: #4d6a8d; }
@@ -32,6 +32,9 @@
   [data-dir="right"] { grid-column: 3; grid-row: 2; } [data-dir="down"] { grid-column: 2; grid-row: 3; }
   .abtn { width: 76px; height: 76px; border-radius: 50%; background: #c0392b; font-weight: 700; font-size: 24px; }
   .abtn:active { background: #e74c3c; }
+  .joy { position: relative; width: 148px; height: 148px; border-radius: 50%; background: radial-gradient(circle, #2b3b52 0%, #1a2433 70%); border: 3px solid #4d6a8d; touch-action: none; user-select: none; flex: none; }
+  .joy::before { content: ""; position: absolute; inset: 22px; border-radius: 50%; border: 2px dashed #4d6a8d55; }
+  .joy i { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9db9de, #4d6a8d); box-shadow: 0 4px 8px #0008; pointer-events: none; }
   p.help { font-size: 12.5px; opacity: .8; text-align: center; margin: 10px 0 0; line-height: 1.7; }
   p.help a { color: #8ab4ff; cursor: pointer; text-decoration: underline; }
 
@@ -187,13 +190,10 @@
 </div>
 
 <div class="controls" id="controls">
-  <div class="dpad">
-    <button data-dir="up">▲</button><button data-dir="left">◀</button>
-    <button data-dir="right">▶</button><button data-dir="down">▼</button>
-  </div>
+  <div class="joy" id="joy"><i id="joy-knob"></i></div>
   <button class="abtn" id="abtn">A</button>
 </div>
-<p class="help">이동: 방향키 / WASD &nbsp;·&nbsp; 지도 켜기/끄기: M &nbsp;·&nbsp; 말 걸기·확인: 스페이스 / 엔터 / Z / A버튼 &nbsp;·&nbsp; 전투 중: 1~4번 키로 답 선택<br>
+<p class="help">이동: 조이스틱 / 방향키 / WASD &nbsp;·&nbsp; 지도 켜기/끄기: M &nbsp;·&nbsp; 말 걸기·확인: 스페이스 / 엔터 / Z / A버튼 &nbsp;·&nbsp; 전투 중: 1~4번 키로 답 선택<br>
 만든이 <b>성현쌤</b> &nbsp;·&nbsp; 에셋: Kenney (kenney.nl) · CC0</p>
 
 <div id="title">
@@ -296,12 +296,121 @@ const QUESTIONS = [{"id":"L1-001","level":1,"subject":"전기설비","topic":"�
 // =====================================================
 // 3) 진행 상황 (브라우저에 자동 저장)
 // =====================================================
+// ----- 추가 문제 (보기 위치는 자동으로 배치돼요. 전투·연습에서는 매번 다시 섞여요) -----
+function addQs(level, subject, startNo, rows) {
+  rows.forEach((r, i) => {
+    const [q, ans, w1, w2, w3, e, diff, topic] = r, c = [w1, w2, w3], pos = (i * 3 + level) % 4;
+    c.splice(pos, 0, ans);
+    QUESTIONS.push({ id: "L" + level + "-" + (startNo + i), level, subject, topic, diff, q, c, a: pos, e });
+  });
+}
+addQs(1, "전기설비", 110, [
+  ["절연전선의 피복을 벗길 때 사용하는 공구는?", "와이어 스트리퍼", "리머", "오스터", "파이프 렌치", "와이어 스트리퍼는 전선 피복을 벗기는 공구예요. 리머는 관 안쪽을 다듬고, 오스터는 관에 나사를 내요.", 1, "전기공사 공구"],
+  ["금속관을 절단할 때 쓰는 공구는?", "파이프 커터", "리머", "오스터", "와이어 게이지", "파이프 커터(또는 쇠톱)로 금속관을 자르고, 자른 뒤에는 리머로 안쪽 거스러미를 다듬어요.", 1, "전기공사 공구"],
+  ["배전반·분전반의 철판에 전선관용 원형 구멍을 뚫을 때 쓰는 공구는?", "홀소", "리머", "오스터", "클리퍼", "홀소는 철판에 원형 구멍을 뚫는 공구예요. 클리퍼는 굵은 전선을 자르는 가위예요.", 2, "전기공사 공구"],
+  ["한국전기설비규정(KEC)에서 교류 저압의 범위는?", "1kV 이하", "600V 이하", "1.5kV 이하", "7kV 이하", "저압은 교류 1kV 이하·직류 1.5kV 이하, 고압은 저압을 넘고 7kV 이하, 특고압은 7kV 초과예요.", 2, "전압의 구분"],
+  ["한국전기설비규정(KEC)에서 직류 저압의 범위는?", "1.5kV 이하", "750V 이하", "1kV 이하", "7kV 이하", "저압은 교류 1kV 이하·직류 1.5kV 이하, 고압은 저압을 넘고 7kV 이하, 특고압은 7kV 초과예요.", 2, "전압의 구분"],
+  ["특고압(특별고압)의 기준은?", "7kV 초과", "1kV 초과", "3.3kV 초과", "10kV 초과", "7kV를 넘으면 교류·직류 모두 특고압이에요.", 2, "전압의 구분"],
+  ["주택의 옥내 전로의 대지전압은 원칙적으로 몇 V 이하로 하는가?", "300V 이하", "150V 이하", "400V 이하", "600V 이하", "주택 옥내 전로의 대지전압은 300V 이하로 해요. (누전차단기 설치 등 조건이 있어요)", 3, "전압의 구분"],
+  ["합성수지몰드공사에서 몰드 홈의 폭과 깊이는 원칙적으로 몇 cm 이하인가?", "3.5cm 이하", "2cm 이하", "5cm 이하", "7cm 이하", "홈의 폭과 깊이는 3.5cm 이하, 두께는 2mm 이상이에요. 사용전압은 400V 이하예요.", 3, "옥내배선공사"],
+  ["플로어덕트공사를 할 수 있는 장소는?", "옥내의 건조한 콘크리트 바닥 속", "옥외의 물기 많은 장소", "폭발성 가스가 있는 장소", "습기가 많은 지하 욕실", "플로어덕트는 옥내의 건조한 콘크리트 또는 신더 콘크리트 바닥 속에 매입해 써요. 사용전압은 400V 이하예요.", 2, "옥내배선공사"],
+  ["금속덕트의 철판 두께는 몇 mm 이상이어야 하는가?", "1.2mm", "0.8mm", "1.6mm", "2.0mm", "금속덕트는 두께 1.2mm 이상의 철판으로 만들고 지지점 간격은 3m 이하예요.", 2, "옥내배선공사"],
+  ["버스덕트공사에서 덕트를 조영재에 붙일 때 지지점 간 거리는 몇 m 이하인가?", "3m", "1.5m", "2m", "5m", "버스덕트의 지지점 간 거리는 3m 이하예요. (취급자만 출입하는 곳의 수직 배선은 6m 이하)", 2, "옥내배선공사"],
+  ["배선용 차단기의 약호는?", "MCCB", "ELB", "VCB", "GCB", "MCCB=배선용 차단기, ELB=누전차단기, VCB=진공차단기, GCB=가스차단기예요.", 1, "약호"],
+  ["누전차단기의 약호는?", "ELB", "MCCB", "ACB", "OCB", "ELB=누전차단기, MCCB=배선용 차단기, ACB=기중차단기, OCB=유입차단기예요.", 1, "약호"],
+  ["수변전설비에서 MOF의 명칭은?", "전력수급용 계기용 변성기", "계기용 변압기", "영상 변류기", "전력용 콘덴서", "MOF는 PT와 CT를 한 통에 넣은 전력수급용 계기용 변성기로, 전력량 계량에 써요.", 2, "수변전 설비"],
+  ["수변전설비에서 LBS의 명칭은?", "고압 부하개폐기", "자동 고장구간 개폐기", "단로기", "컷아웃 스위치", "LBS는 부하 전류를 개폐할 수 있는 고압 부하개폐기예요. 단로기(DS)는 무부하에서만 개폐해요.", 2, "수변전 설비"],
+  ["단상 3선식 220/110V에서 중성선과 외측 전선 사이의 전압은?", "110V", "220V", "380V", "127V", "단상 3선식은 외측선과 외측선 사이가 220V, 중성선과 외측선 사이가 110V예요.", 1, "배전 방식"],
+  ["3상 4선식 380/220V 방식에서 선간전압이 380V일 때 상전압은?", "220V", "380V", "110V", "658V", "Y결선에서 상전압=선간전압/√3=380/1.732≈220V예요.", 1, "배전 방식"],
+  ["저압 전로의 누설전류는 최대공급전류의 얼마를 넘지 않도록 해야 하는가?", "1/2000", "1/1000", "1/3000", "1/500", "저압 전로의 누설전류는 최대공급전류의 1/2000 이하로 유지해야 해요.", 3, "전로의 절연"],
+  ["피뢰기의 접지저항은 몇 Ω 이하로 해야 하는가?", "10Ω", "5Ω", "20Ω", "100Ω", "고압·특고압 피뢰기의 접지저항은 10Ω 이하로 해요.", 3, "피뢰기"],
+  ["가공 전선의 이도(처짐 정도)를 크게 하면 전선의 장력은?", "작아진다", "커진다", "변하지 않는다", "2배가 된다", "이도 D=WS²/(8T)이므로 이도가 커지면 장력 T는 작아져요. 대신 지지물이 더 높아야 해요.", 3, "가공 전선로"],
+  ["지선을 연선으로 만들 때 소선은 최소 몇 가닥 이상이어야 하는가?", "3가닥", "2가닥", "5가닥", "7가닥", "지선은 3가닥 이상의 연선, 소선 지름 2.6mm 이상, 안전율 2.5 이상이에요.", 2, "가공 전선로"],
+  ["조명 설계에서 감광보상률(D)의 역수는?", "보수율(유지율)", "조명률", "반사율", "효율", "D=1/M이고 M이 보수율이에요. 램프가 오래되고 먼지가 앉아 줄어드는 밝기를 미리 보상해요.", 3, "조명"],
+  ["형광등 회로에서 안정기의 역할은?", "점등 때 높은 전압을 만들고 점등 후에는 전류를 제한한다", "전압을 낮춰 직류로 바꾼다", "주파수를 높인다", "역률을 0으로 만든다", "안정기는 방전을 시작하게 해 주고, 점등 후에는 전류가 과하게 흐르지 않게 제한해요.", 2, "조명"],
+  ["접지계통 TT에서 두 번째 문자 'T'가 의미하는 것은?", "노출도전부를 전원과 별개로 대지에 직접 접속", "전원을 대지와 절연", "중성선과 보호도체를 겸용", "중성선과 보호도체를 분리", "TT는 전원 한 점을 직접 접지(첫 T)하고, 설비의 노출도전부는 전원 접지와 별도의 접지극에 접속(둘째 T)해요.", 3, "접지공사"],
+  ["옥내배선 심벌에서 ●₃ 로 표시하는 스위치는?", "3로 스위치", "4로 스위치", "타임 스위치", "리모컨 스위치", "●₃는 3로 스위치예요. 계단 등 2개소에서 점멸할 때 써요.", 1, "조명·심벌"],
+  ["전동기를 과부하로부터 보호하는 열동계전기(THR)가 감지하는 것은?", "과부하(과전류로 생기는 열)", "단락 전류만", "저전압", "지락 전류만", "열동계전기는 과전류로 생기는 열에 바이메탈이 휘어 접점을 열어요. 단락 보호는 퓨즈나 차단기가 맡아요.", 2, "시퀀스 제어"],
+  ["시퀀스 제어에서 전자접촉기의 약호는?", "MC", "THR", "PBS", "TLR", "MC=전자접촉기, THR=열동계전기, PBS=푸시버튼 스위치, TLR=타이머예요.", 1, "시퀀스 제어"],
+  ["시퀀스 회로에서 자기유지를 위해 시동 푸시버튼에 병렬로 접속하는 것은?", "전자접촉기(MC)의 a접점", "전자접촉기(MC)의 b접점", "열동계전기의 b접점", "정지 푸시버튼", "시동 버튼을 놓아도 계속 동작하도록, MC 자신의 a접점을 시동 버튼과 병렬로 넣어요.", 2, "시퀀스 제어"],
+  ["평상시 열려 있다가 동작하면 닫히는 접점은?", "a접점", "b접점", "c접점", "인터록 접점", "a접점은 평상시 열린 접점(메이크), b접점은 평상시 닫힌 접점(브레이크), c접점은 전환 접점이에요.", 1, "시퀀스 제어"],
+  ["지락 계전기의 약호는?", "GR", "OCR", "OVR", "UVR", "GR=지락 계전기, OCR=과전류, OVR=과전압, UVR=부족전압 계전기예요.", 2, "약호"],
+  ["단상 2선식 전로의 전압강하 e를 구하는 식은? (L: 길이 m, I: 전류 A, A: 전선 단면적 mm²)", "e=35.6LI/(1000A)", "e=30.8LI/(1000A)", "e=17.8LI/(1000A)", "e=60LI/(1000A)", "단상 2선식·직류 2선식은 35.6, 3상 3선식은 30.8, 단상 3선식·3상 4선식은 17.8을 곱해요.", 3, "전압강하"],
+  ["3상 3선식 전로의 전압강하 e를 구하는 식은? (L: 길이 m, I: 전류 A, A: 전선 단면적 mm²)", "e=30.8LI/(1000A)", "e=35.6LI/(1000A)", "e=17.8LI/(1000A)", "e=8.9LI/(1000A)", "단상 2선식·직류 2선식은 35.6, 3상 3선식은 30.8, 단상 3선식·3상 4선식은 17.8을 곱해요.", 3, "전압강하"],
+  ["비닐(PVC) 절연전선의 허용 최고 온도는?", "70℃", "60℃", "90℃", "105℃", "PVC 절연은 70℃, 가교폴리에틸렌(XLPE) 절연은 90℃예요.", 2, "전선"],
+  ["전선 약호 CV가 나타내는 것은?", "가교폴리에틸렌 절연 비닐 시스 케이블", "비닐 절연 비닐 시스 케이블", "인입용 비닐 절연전선", "옥외용 비닐 절연전선", "CV=가교폴리에틸렌 절연 비닐 시스 케이블, VV=비닐 절연 비닐 시스 케이블이에요.", 2, "전선"],
+  ["전선 약호 VV가 나타내는 것은?", "비닐 절연 비닐 시스 케이블", "가교폴리에틸렌 절연 비닐 시스 케이블", "450/750V 일반용 단심 비닐 절연전선", "강심 알루미늄 연선", "VV=비닐 절연 비닐 시스 케이블, CV=가교폴리에틸렌 절연 비닐 시스 케이블이에요.", 2, "전선"]
+]);
+addQs(2, "전기기기", 98, [
+  ["직류발전기에서 회전수가 일정할 때 매극 자속을 2배로 하면 유기기전력은?", "2배", "1/2배", "4배", "변하지 않는다", "E=pZφN/(60a)이므로 기전력은 자속에 비례해요.", 1, "직류기"],
+  ["직류 분권전동기 운전 중 계자 회로가 끊어지면 일어나는 현상은?", "속도가 급격히 올라간다(위험속도)", "정지한다", "속도가 변하지 않는다", "반대로 회전한다", "N∝E/φ에서 φ가 거의 0이 되면 속도가 매우 빨라져 위험해요. 그래서 계자 회로에는 퓨즈를 넣지 않아요.", 3, "직류전동기"],
+  ["직류 직권전동기를 벨트로 연결해 쓰면 안 되는 이유는?", "벨트가 벗겨져 무부하가 되면 위험 속도로 회전하기 때문", "효율이 너무 낮기 때문", "역회전하기 때문", "소음이 크기 때문", "직권전동기는 부하가 없으면 전기자 전류와 자속이 줄어 속도가 매우 빨라져요. 그래서 기어나 직결로 연결해요.", 2, "직류전동기"],
+  ["직류기 정류자편 사이의 절연물로 주로 쓰는 것은?", "운모(마이카)", "종이", "고무", "에보나이트", "정류자편 사이에는 내열성이 좋은 운모(마이카)를 끼워요.", 1, "직류기"],
+  ["동기발전기 전기자 권선을 Y결선으로 하는 이점은?", "중성점을 접지할 수 있고 제3고조파 순환전류가 흐르지 않는다", "선전류가 상전류의 √3배가 된다", "상전압이 선간전압과 같아진다", "권선의 임피던스가 0이 된다", "Y결선은 상전압이 선간전압의 1/√3이라 권선 절연이 쉽고, 중성점 접지가 가능해요.", 3, "동기기"],
+  ["50Hz, 6극 동기발전기의 동기속도는?", "1000rpm", "750rpm", "1200rpm", "1500rpm", "Ns=120f/P=120×50/6=1000rpm이에요.", 1, "동기기"],
+  ["50Hz, 4극 유도전동기가 1440rpm으로 회전할 때 슬립은?", "4%", "2%", "3%", "5%", "Ns=1500rpm이므로 s=(1500−1440)/1500=0.04=4%예요.", 2, "유도기"],
+  ["유도전동기의 2차 효율을 나타내는 식은? (s: 슬립)", "1−s", "s", "1+s", "1/s", "2차 효율=기계적 출력/2차 입력=1−s=N/Ns예요.", 3, "유도기"],
+  ["변압기 철심에 규소를 약 4~4.5% 넣은 강판을 쓰는 주된 이유는?", "히스테리시스손을 줄이기 위해", "동손을 줄이기 위해", "기계손을 줄이기 위해", "절연을 높이기 위해", "규소강판은 히스테리시스손을, 얇게 겹친 성층 철심은 와류손을 줄여요.", 2, "변압기"],
+  ["변압기 절연유의 구비 조건으로 틀린 것은?", "인화점이 낮을 것", "절연내력이 클 것", "냉각 효과가 클 것", "응고점이 낮을 것", "절연유는 인화점이 높아야 안전하고, 점도가 낮아야 냉각이 잘 돼요.", 2, "변압기"],
+  ["유입 자냉식 변압기의 냉각 방식 약호는?", "ONAN", "ONAF", "OFAF", "AN", "ONAN=유입 자냉식, ONAF=유입 풍냉식, OFAF=송유 풍냉식, AN=건식 자냉식이에요.", 3, "변압기"],
+  ["정격전류 100A, %임피던스 5%인 변압기 2차 측의 단락전류는?", "2000A", "500A", "1000A", "5000A", "Is=100/%Z×In=100/5×100=2000A예요.", 3, "변압기"],
+  ["단상 변압기 5kVA 2대를 V결선하여 3상 전력을 공급할 때 출력은 약 몇 kVA인가?", "8.66kVA", "10kVA", "15kVA", "5.77kVA", "V결선 출력=√3×P₁=1.732×5≈8.66kVA예요.", 2, "변압기"],
+  ["Δ결선 변압기 3대 중 1대를 떼어 내 V결선으로 운전할 때 출력비는?", "57.7%", "66.7%", "86.6%", "75%", "V결선 출력은 √3P, Δ결선 출력은 3P이므로 출력비는 √3/3≈57.7%예요. (이용률은 86.6%)", 3, "변압기"],
+  ["변류비 100/5인 변류기의 2차 전류계가 4A를 가리킨다면 1차 전류는?", "80A", "20A", "100A", "400A", "1차 전류=2차 전류×변류비=4×(100/5)=80A예요.", 2, "계기용 변성기"],
+  ["VVVF 인버터로 유도전동기 속도를 제어할 때 변화시키는 것은?", "전압과 주파수", "극수만", "슬립링 저항만", "권수비", "VVVF는 가변전압 가변주파수 제어예요. 주파수를 바꾸면 동기속도가 변해요.", 2, "유도기"],
+  ["단상 유도전동기의 회전 방향을 바꾸려면?", "기동 권선 또는 운전 권선 중 한쪽의 접속을 반대로 한다", "전원 단자의 접속을 서로 바꾼다", "콘덴서 용량을 키운다", "주파수를 바꾼다", "전원 단자를 바꿔도 회전 방향은 그대로예요. 한쪽 권선의 접속만 반대로 해야 해요.", 3, "유도기"],
+  ["동기발전기의 병렬 운전 조건이 아닌 것은?", "용량이 같을 것", "기전력의 크기가 같을 것", "기전력의 위상이 같을 것", "주파수가 같을 것", "병렬 운전 조건은 크기·위상·주파수·파형이 같을 것이에요. 용량은 달라도 돼요.", 2, "동기기"],
+  ["동기전동기를 기동하는 방법은?", "자기기동법", "계자 제어법", "워드 레오나드 방식", "2차 저항 기동법", "동기전동기는 기동토크가 없어서 제동권선을 이용한 자기기동법이나 유도전동기를 이용한 기동법을 써요.", 2, "동기기"],
+  ["실리콘 다이오드의 순방향 전압강하는 약 몇 V인가?", "0.7V", "0.2V", "1.5V", "5V", "실리콘은 약 0.6~0.7V, 게르마늄은 약 0.2~0.3V예요.", 2, "반도체"],
+  ["교류 실효값 200V를 단상 반파 정류했을 때 직류 평균전압은?", "90V", "180V", "141V", "282V", "단상 반파 정류의 평균전압은 0.45E=0.45×200=90V예요.", 2, "정류기"],
+  ["SCR의 3개 단자 명칭은?", "애노드·캐소드·게이트", "이미터·베이스·컬렉터", "소스·드레인·게이트", "입력·출력·접지", "SCR은 애노드(A), 캐소드(K), 게이트(G)의 3단자 소자예요.", 1, "반도체"],
+  ["전기기계의 손실 중 부하 전류에 따라 변하는 것은?", "동손", "철손", "기계손", "히스테리시스손", "철손·기계손은 부하와 관계없는 고정손, 동손은 전류의 제곱에 비례하는 가변손이에요.", 2, "손실·효율"],
+  ["입력이 10kW이고 효율이 90%인 전동기의 출력은?", "9kW", "9.9kW", "11.1kW", "1kW", "출력=입력×효율=10×0.9=9kW예요.", 1, "손실·효율"],
+  ["정격 전압 100V, 정격 전류 50A인 직류발전기의 정격 출력은?", "5kW", "2kW", "500W", "50kW", "P=VI=100×50=5000W=5kW예요.", 1, "직류기"],
+  ["변압기의 무부하 손실의 대부분을 차지하는 것은?", "철손", "동손", "기계손", "유전체손", "무부하 때는 여자전류만 흘러 철손(히스테리시스손+와류손)이 대부분이에요.", 2, "변압기"],
+  ["직류 분권발전기가 스스로 전압을 만들어 내기(자기여자) 위해 꼭 필요한 것은?", "철심의 잔류자기", "부하 접속", "별도의 교류 전원", "계자저항 최대", "분권발전기는 잔류자기가 있어야 전압이 확립돼요. 계자저항은 임계저항보다 작아야 해요.", 3, "직류기"],
+  ["동기발전기의 계자 권선에 직류 전류를 공급하는 장치는?", "여자기", "조상기", "정류자", "변류기", "여자기는 계자에 직류를 공급해 자속을 만들어 주는 장치예요.", 1, "동기기"],
+  ["농형 유도전동기 회전자 도체를 축 방향에 대해 비스듬히 만드는 이유는?", "소음을 줄이고 크로우링 현상을 막기 위해", "역률을 1로 만들기 위해", "회전수를 높이기 위해", "냉각을 좋게 하기 위해", "사선 슬롯(스큐)은 소음과 진동을 줄이고, 낮은 속도에서 더 이상 가속되지 않는 크로우링을 막아 줘요.", 3, "유도기"]
+]);
+addQs(3, "전기이론·회로", 101, [
+  ["12V 전원에 4Ω 저항을 연결했을 때 흐르는 전류는?", "3A", "48A", "8A", "0.33A", "I=V/R=12/4=3A예요.", 1, "기초"],
+  ["10Ω, 20Ω, 30Ω 저항을 직렬로 연결한 합성저항은?", "60Ω", "5.45Ω", "20Ω", "6000Ω", "직렬 합성저항은 단순히 더해요. 10+20+30=60Ω이에요.", 1, "직·병렬 회로"],
+  ["20Ω과 30Ω 저항을 병렬로 연결한 합성저항은?", "12Ω", "50Ω", "25Ω", "10Ω", "R=(20×30)/(20+30)=600/50=12Ω이에요.", 1, "직·병렬 회로"],
+  ["100V 전원에 5A의 전류가 흐를 때 소비전력은?", "500W", "20W", "105W", "95W", "P=VI=100×5=500W예요.", 1, "저항·전력"],
+  ["500W 전열기를 4시간 사용했을 때 전력량은?", "2kWh", "0.5kWh", "8kWh", "20kWh", "W=Pt=0.5kW×4h=2kWh예요.", 1, "저항·전력"],
+  ["10Ω 저항에 2A의 전류가 흐를 때 소비전력은?", "40W", "20W", "5W", "200W", "P=I²R=2²×10=40W예요.", 2, "저항·전력"],
+  ["5μF 콘덴서에 100V를 가했을 때 축적되는 전하량은?", "500μC", "20μC", "0.05μC", "105μC", "Q=CV=5μF×100V=500μC예요.", 2, "정전기·콘덴서"],
+  ["60Hz에서 인덕턴스 0.05H인 코일의 유도 리액턴스는 약 몇 Ω인가?", "18.8Ω", "3Ω", "188Ω", "37.7Ω", "XL=2πfL=2π×60×0.05≈18.8Ω이에요.", 2, "RLC 회로"],
+  ["60Hz에서 정전용량 100μF 콘덴서의 용량 리액턴스는 약 몇 Ω인가?", "26.5Ω", "2.65Ω", "265Ω", "37.7Ω", "XC=1/(2πfC)=1/(377×100×10⁻⁶)≈26.5Ω이에요.", 3, "RLC 회로"],
+  ["R=8Ω, XL=6Ω인 직렬회로에 100V를 가했을 때 흐르는 전류는?", "10A", "12.5A", "7.1A", "100A", "Z=√(8²+6²)=10Ω이므로 I=V/Z=100/10=10A예요.", 2, "RLC 회로"],
+  ["선간전압 200V, 선전류 5A, 역률 1인 3상 부하의 유효전력은 약 몇 W인가?", "1732W", "1000W", "3000W", "577W", "P=√3VIcosθ=1.732×200×5×1≈1732W예요.", 2, "3상 회로"],
+  ["주파수 60Hz인 교류의 주기는 약 몇 ms인가?", "16.7ms", "6ms", "60ms", "1.67ms", "T=1/f=1/60≈0.0167초=16.7ms예요.", 1, "교류 기초"],
+  ["3A의 전류가 10Ω 저항에 10초 동안 흐를 때 발생하는 열량은?", "900J", "30J", "300J", "90J", "H=I²Rt=3²×10×10=900J예요.", 2, "저항·전력"],
+  ["정전용량 1F의 정의는?", "1V를 가했을 때 1C의 전하가 축적되는 용량", "1A가 흐를 때의 용량", "1Ω에 1V를 가했을 때의 용량", "1J의 에너지를 내는 용량", "C=Q/V이므로 1F=1C/V예요.", 1, "정전기·콘덴서"],
+  ["인덕턴스 1H의 정의는?", "1초 동안 전류가 1A 변할 때 1V의 기전력이 유도되는 값", "1V를 가했을 때 1C가 모이는 값", "1Ω에 1A가 흐르는 값", "1J의 에너지가 1초 동안 소비되는 값", "e=L·(Δi/Δt)에서 Δi/Δt=1A/s일 때 e=1V이면 L=1H예요.", 2, "전자유도"],
+  ["진공의 투자율 μ₀의 값은?", "4π×10⁻⁷ H/m", "8.855×10⁻¹² F/m", "9×10⁹ N·m²/C²", "1.602×10⁻¹⁹ C", "μ₀=4π×10⁻⁷H/m이고, 진공의 유전율 ε₀는 8.855×10⁻¹²F/m예요.", 2, "자기"],
+  ["진공의 유전율 ε₀의 값은?", "8.855×10⁻¹² F/m", "4π×10⁻⁷ H/m", "9×10⁹ N·m²/C²", "6.02×10²³", "ε₀=8.855×10⁻¹²F/m이고, 진공의 투자율 μ₀는 4π×10⁻⁷H/m예요.", 2, "정전기·콘덴서"],
+  ["다음 중 전력량의 단위가 아닌 것은?", "W", "J", "Wh", "kWh", "W는 전력의 단위예요. 전력량은 J(줄), Wh, kWh로 나타내요.", 1, "저항·전력"],
+  ["1A의 전류가 1초 동안 흐를 때 이동한 전기량은?", "1C", "1F", "1H", "1Wb", "Q=It=1×1=1C(쿨롱)이에요.", 1, "기초"],
+  ["고유저항(저항률)의 단위는?", "Ω·m", "Ω/m", "S", "Ω·m²", "R=ρl/A에서 ρ=RA/l이므로 단위는 Ω·m²/m=Ω·m이에요.", 2, "저항·전력"],
+  ["길이가 같은 도체의 지름을 2배로 하면 저항은?", "1/4배", "1/2배", "2배", "4배", "단면적은 지름의 제곱에 비례해 4배가 되므로 저항은 1/4배예요.", 2, "저항·전력"],
+  ["전압계와 전류계의 올바른 접속 방법은?", "전압계는 병렬, 전류계는 직렬", "전압계는 직렬, 전류계는 병렬", "둘 다 직렬", "둘 다 병렬", "전압계는 측정 대상에 병렬로, 전류계는 직렬로 연결해요.", 1, "계측"],
+  ["이상적인 전류계의 내부저항은?", "0", "∞", "1Ω", "10Ω", "전류계는 내부저항이 작을수록, 전압계는 클수록 이상적이에요.", 2, "계측"],
+  ["평형 3상 Y결선에서 중성선에 흐르는 전류는?", "0", "상전류의 3배", "상전류의 √3배", "선전류와 같다", "평형 3상에서는 세 상 전류의 벡터합이 0이라 중성선 전류가 0이에요.", 2, "3상 회로"],
+  ["Δ결선에서 선간전압과 상전압의 관계는?", "같다", "선간전압이 √3배", "선간전압이 1/√3배", "선간전압이 3배", "Δ결선은 선간전압=상전압, 선전류=√3×상전류예요. Y결선은 반대로 선간전압=√3×상전압이에요.", 1, "3상 회로"],
+  ["저항(R)만 있는 교류 회로에서 전압과 전류의 위상 관계는?", "동상이다", "전류가 90° 앞선다", "전류가 90° 뒤진다", "전류가 180° 뒤진다", "R은 위상차를 만들지 않아서 전압과 전류가 동상이에요.", 1, "RLC 회로"],
+  ["L=0.1H, C=10μF인 직렬공진 회로의 공진 주파수는 약 몇 Hz인가?", "159Hz", "100Hz", "1000Hz", "60Hz", "f₀=1/(2π√LC)=1/(2π×10⁻³)≈159Hz예요.", 3, "RLC 회로"],
+  ["무한히 긴 직선 도체에 10A가 흐를 때, 도체에서 1/π [m] 떨어진 점의 자계의 세기는?", "5AT/m", "10AT/m", "20AT/m", "2.5AT/m", "H=I/(2πr)=10/(2π×1/π)=5AT/m예요.", 3, "자기"],
+  ["자기회로에서 단면적을 2배로 하면(길이·재질 동일) 자기저항은?", "1/2배", "2배", "4배", "변하지 않는다", "R=l/(μS)이므로 단면적이 2배면 자기저항은 1/2배예요.", 2, "자기"],
+  ["평행판 콘덴서에서 극판 면적을 2배로 하면 정전용량은?", "2배", "1/2배", "4배", "변하지 않는다", "C=εS/d이므로 극판 면적에 비례해요.", 1, "정전기·콘덴서"]
+]);
+
 const MAX_LV = 10;
 const BADGE_NAMES = { 1: "전기설비 뱃지", 2: "전기기기 뱃지", 3: "전기이론 뱃지" };
 const newSave = () => ({
   lv: 1, exp: 0, totalExp: 0, hp: 50, hints: 3, badges: [], wrong: [], streak: {}, sound: true, music: true, coins: 0, potions: 0,
   stats: { a: [0, 0, 0, 0], c: [0, 0, 0, 0] },
-  ach: {}, title: "", titleName: "",
+  ach: {}, title: "", titleName: "", seen: [],
   cnt: { kills: 0, guards: 0, chests: 0, grads: 0, perfect: 0, maxCombo: 0 },
   att: { last: "", streak: 0, best: 0, total: 0 },
   mock: { best: 0, passes: 0, tries: 0, lastReward: "" },
@@ -312,7 +421,7 @@ function normSave(s) {                                                  // 서�
   o.badges = [...(o.badges || [])]; o.wrong = [...(o.wrong || [])]; o.streak = Object.assign({}, o.streak); o.ach = Object.assign({}, o.ach);
   const st = (s && s.stats) || {}; o.stats = { a: [0, 1, 2, 3].map((i) => +((st.a || [])[i]) || 0), c: [0, 1, 2, 3].map((i) => +((st.c || [])[i]) || 0) };
   const base = newSave(); o.cnt = Object.assign(base.cnt, s && s.cnt); o.att = Object.assign(base.att, s && s.att); o.mock = Object.assign(base.mock, s && s.mock);
-  o.daily = Object.assign(base.daily, s && s.daily); o.daily.q = [...(o.daily.q || [])];
+  o.daily = Object.assign(base.daily, s && s.daily); o.daily.q = [...(o.daily.q || [])]; o.seen = [...(o.seen || [])];
   return o;
 }
 // ---------- 서버 연결 ----------
@@ -376,7 +485,7 @@ function showConflict(r) {
 function sessionExpired() { toast("로그인이 만료됐어요. 다시 로그인해 주세요."); dirty = false; session = null; try { localStorage.removeItem(SESS_KEY); } catch (e) {} showTitle(true); }
 const maxHp = () => 50 + 10 * (save.lv - 1);       // 레벨이 오르면 체력 증가
 const atkPower = () => 10 + 2 * (save.lv - 1);          // 레벨이 오르면 공격력 증가
-const expNeed = () => 40 + 20 * (save.lv - 1);
+const expNeed = () => 120 + 70 * (save.lv - 1) + 15 * (save.lv - 1) * (save.lv - 1);       // Lv.1→2 는 120, Lv.9→10 은 1640 필요 (이전보다 훨씬 어려움)
 
 // =====================================================
 // 3-2) 레벨에 따라 바뀌는 캐릭터 색 (2레벨마다 단계 상승)
@@ -409,6 +518,7 @@ function playerCanvas(tier) {                                              // �
   }
   return (playerCvs[tier] = c);
 }
+function safePlayerCv() { try { return playerCanvas(tierOf(save.lv)); } catch (e) { return null; } }
 function paintPlayer() { const c = $("meSpr").getContext("2d"); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 16, 16); c.drawImage(playerCanvas(tierOf(save.lv)), 0, 0); }
 
 // =====================================================
@@ -881,14 +991,22 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.fl
 function startBattle(mon) {
   const t = MON[mon.type];
   battle = { mon, t, hp: t.hp, max: t.hp, combo: 0, coins: 0, used: new Set(), q: null, state: "q", exp: 0, right: 0, wrong: 0, order: [], hinted: false, over: null };
-  held.length = 0; dialog = null; Music.play(t.boss ? "boss" : "battle", BATTLE_SHIFT[curMap.id] || 0);
+  held.length = 0; joyReset(); dialog = null; Music.play(t.boss ? "boss" : "battle", BATTLE_SHIFT[curMap.id] || 0);
   canvas.style.display = "none"; $("controls").style.display = "none"; $("battle").style.display = "block";
   $("scene").classList.toggle("boss", !!t.boss); $("scene").classList.toggle("factory", curMap.theme === "factory"); $("scene").classList.toggle("dungeon", curMap.theme === "dungeon"); $("scene").classList.toggle("farm", curMap.theme === "farm");
   paintSprite($("foeSpr"), t.sheet || "battle", t.tile, false); paintPlayer();
   $("foeName").textContent = (t.boss ? "👑 " : "") + t.name; $("meName").textContent = "Lv." + save.lv + " 전기공";
   refreshBattleBars(); if (save.hp > 0 && save.hp / maxHp() <= .25) dangerAlert();
-  nextQuestion(t.boss ? `보스 <b>${t.name}</b>이(가) 나타났다!` : t.guard ? `길을 막고 있던 <b>${t.name}</b>과(와) 전투 시작!` : `<b>${t.name}</b>이(가) 나타났다!`);
+  showBattleIntro(t.boss ? `보스 <b>${t.name}</b>이(가) 나타났다!` : t.guard ? `길을 막고 있던 <b>${t.name}</b>이(가) 나타났다!` : `<b>${t.name}</b>이(가) 나타났다!`);
   updateHUD();
+}
+function showBattleIntro(msg) {                                           // 전투 시작 전 대기 화면: 버튼을 눌러야 문제가 나와요
+  battle.state = "intro"; battle.q = null;
+  $("bq").textContent = "⚔ 전투 준비!"; $("bopts").innerHTML = "";
+  $("bmsg").innerHTML = msg + "<br>준비가 되면 <b>⚔ 전투 시작</b> 버튼을 눌러요.";
+  $("bhint").style.display = "none"; $("bpot").style.display = "none"; $("brun").style.display = "";
+  $("bnext").style.display = ""; $("bnext").textContent = "⚔ 전투 시작";
+  updateBattleMeta();
 }
 function refreshBattleBars() {
   setBar($("foeHp"), battle.hp, battle.max); $("foeHpTxt").textContent = Math.max(0, battle.hp) + "/" + battle.max;
@@ -899,21 +1017,23 @@ function pickQuestion() {
   const diffs = battle.t.diffs || [0.1, 0.5, 0.4];
   const levels = battle.t.subject ? [battle.t.subject] : curMap.mixed ? [1, 2, 3] : [curMap.stage];   // 종합 지역은 3과목 모두, 수문장은 담당 과목만
   const pool = QUESTIONS.filter((q) => levels.includes(q.level) && !battle.used.has(q.id));
-  const noteQs = pool.filter((q) => save.wrong.includes(q.id) && !recentIds.slice(-4).includes(q.id));   // 오답노트 문제는 자주 다시 나옴
-  if (noteQs.length && Math.random() < 0.5) {
-    const q = noteQs[Math.floor(Math.random() * noteQs.length)];
-    battle.used.add(q.id); recentIds.push(q.id); if (recentIds.length > 40) recentIds.shift(); return q;
-  }
+  const take = (q) => { battle.used.add(q.id); recentIds.push(q.id); if (recentIds.length > 80) recentIds.shift(); return q; };
+  const noteQs = pool.filter((q) => save.wrong.includes(q.id) && !recentIds.slice(-12).includes(q.id));   // 오답노트 문제는 가끔 다시 나옴
+  if (noteQs.length && Math.random() < 0.25) return take(noteQs[Math.floor(Math.random() * noteQs.length)]);
+  // 아직 안 나온 문제를 먼저 내고, 다 나오면 한 바퀴를 새로 시작 → 같은 문제가 자주 반복되지 않아요
+  const seen = new Set(save.seen);
+  let fresh = pool.filter((q) => !seen.has(q.id));
+  if (!fresh.length) { const ids = new Set(pool.map((q) => q.id)); save.seen = save.seen.filter((id) => !ids.has(id)); fresh = pool; }
   let r = Math.random(), d = 3;                                          // 난이도 비율대로 ★1/★2/★3 중 하나를 고름
   for (let i = 0; i < 3; i++) { if (r < diffs[i]) { d = i + 1; break; } r -= diffs[i]; }
-  let cand = pool.filter((q) => q.diff === d); if (!cand.length) cand = pool;
-  const fresh = cand.filter((q) => !recentIds.includes(q.id)); if (fresh.length) cand = fresh;
+  let cand = fresh.filter((q) => q.diff === d); if (!cand.length) cand = fresh;
+  const notRecent = cand.filter((q) => !recentIds.includes(q.id)); if (notRecent.length) cand = notRecent;
   const q = cand[Math.floor(Math.random() * cand.length)];
-  battle.used.add(q.id); recentIds.push(q.id); if (recentIds.length > 40) recentIds.shift();
-  return q;
+  if (!save.seen.includes(q.id)) save.seen.push(q.id);
+  return take(q);
 }
 function nextQuestion(msg) {
-  const q = pickQuestion(); battle.q = q; battle.state = "q"; battle.hinted = false;
+  const q = pickQuestion(); battle.q = q; battle.state = "q"; battle.hinted = false; battle.lock = performance.now() + 450;     // 문제가 뜬 직후 0.45초는 실수 터치 방지
   battle.order = shuffle([0, 1, 2, 3]);                                // 보기 순서는 매번 섞음
   $("bq").textContent = q.q;
   const box = $("bopts"); box.innerHTML = "";
@@ -965,7 +1085,7 @@ function noteUpdate(q, right, ctx) {                                      // 오
   save.streak[q.id] = 0; return m;                                         // 틀리면 연속 정답 횟수 초기화
 }
 function choose(k) {
-  if (!battle || battle.state !== "q") return;
+  if (!battle || battle.state !== "q" || performance.now() < (battle.lock || 0)) return;
   const q = battle.q, t = battle.t, picked = battle.order[k], correctK = battle.order.indexOf(q.a);
   const right = picked === q.a;
   battle.state = "r";
@@ -1012,6 +1132,7 @@ function useHint() {
   save.hints--; battle.hinted = true; writeSave(); updateBattleMeta(); updateHUD();
 }
 function nextStep() {
+  if (battle && battle.state === "intro") { nextQuestion(); return; }
   if (!battle || battle.state !== "r") return;
   if (battle.over) { finishBattle(); return; }
   nextQuestion();
@@ -1053,20 +1174,25 @@ function finishBattle() {
   writeSave(); updateHUD();
   $("bopts").innerHTML = ""; $("bq").textContent = "전투 결과"; $("bmsg").innerHTML = html;
   $("bhint").style.display = "none"; $("brun").style.display = "none"; $("bpot").style.display = "none";
-  $("bnext").style.display = ""; $("bnext").textContent = battle.over === "win" ? "계속하기 ▶" : "마을로 ▶";
+  $("bnext").style.display = ""; $("bnext").textContent = battle.over === "win" ? (t.boss ? "마을로 돌아가기 ▶" : "계속하기 ▶") : "마을로 ▶";
   battle.closing = true;
 }
 function closeBattle(result) {
   const mon = battle.mon;
   battle = null; $("battle").style.display = "none"; canvas.style.display = ""; $("controls").style.display = "";
-  cooldown = 700; held.length = 0; Music.play(curMap.bgm);
+  cooldown = 700; held.length = 0; joyReset(); Music.play(curMap.bgm);
+  player.moving = false; player.px = player.x * TILE; player.py = player.y * TILE; dialog = null;      // 캐릭터 위치·상태를 확실히 되돌림
   if (result === "win") { defeated.add(curMap.id + ":" + mon.id); curMonsters = curMonsters.filter((m) => m.id !== mon.id); }
+  if (result === "win" && MON[mon.type].boss) {                                    // 보스를 쓰러뜨리면 마을로 이동
+    const ex = curMap.exits && curMap.exits[0];
+    if (ex) { paintPlayer(); startTransition(() => { loadMap(ex.to, ex.tx, ex.ty); toast("🏆 보스를 쓰러뜨리고 마을로 돌아왔어요! 체력도 모두 회복됐어요.", 4500); }); }
+  }
   if (result === "lose") startTransition(() => loadMap("town", 11, 6));
   updateHUD();
 }
 $("bnext").onclick = () => { if (battle && battle.closing) closeBattle(battle.over); else nextStep(); };
 $("bhint").onclick = useHint;
-$("brun").onclick = () => { if (battle && battle.state === "q") { SFX.ng(); closeBattle("run"); } };
+$("brun").onclick = () => { if (battle && (battle.state === "q" || battle.state === "intro")) { SFX.ng(); closeBattle("run"); } };
 
 // =====================================================
 // 11) 화면 위쪽 상태창(HUD) · 오답노트 · 설정
@@ -1076,7 +1202,7 @@ function updateHUD() {
   const r = save.hp / maxHp(); $("h-hp").style.width = (r * 100) + "%";
   $("h-hpbar").classList.toggle("low", r <= .5 && r > .25); $("h-hpbar").classList.toggle("crit", r <= .25);
   $("h-hptxt").textContent = "HP " + save.hp + "/" + maxHp();
-  $("h-exp").style.width = (save.lv >= MAX_LV ? 100 : save.exp / expNeed() * 100) + "%";
+  $("h-exp").style.width = (save.lv >= MAX_LV ? 100 : Math.min(100, save.exp / expNeed() * 100)) + "%";
   $("h-exptxt").textContent = save.lv >= MAX_LV ? "MAX" : "EXP " + save.exp + "/" + expNeed();
   $("h-hint").textContent = "💡 " + save.hints; $("h-quest").textContent = "📅 퀘스트" + (questClaimable() ? " ●" : ""); if (profileName) $("h-name").textContent = "👤 " + (save.titleName ? "[" + save.titleName + "] " : "") + profileName + (isAdmin() ? " 🛠" : ""); $("h-coin").textContent = "🪙 " + save.coins; $("h-pot").textContent = "🧪 " + save.potions;
   $("h-badges").textContent = "🏅 " + [1, 2, 3].map((n) => save.badges.includes(n) ? "●" : "○").join(" ") + (save.cleared ? "  🏆" : "");
@@ -1238,7 +1364,9 @@ function renderSvc() {
     $("pr-mock").onclick = startMock;
     body.querySelectorAll("[data-p]").forEach((b) => b.onclick = () => {
       const lv = +b.dataset.p, pool = QUESTIONS.filter((q) => lv === 0 || q.level === lv);
-      startQuiz(shuffle(pool.slice()).slice(0, lv === 0 ? 20 : 10), "practice", lv === 0 ? "종합 연습" : SUBJ[lv] + " 연습");
+      const seenSet = new Set(save.seen), picked = shuffle(pool.slice()).sort((x, y) => (seenSet.has(x.id) ? 1 : 0) - (seenSet.has(y.id) ? 1 : 0)).slice(0, lv === 0 ? 20 : 10);
+      picked.forEach((q) => { if (!save.seen.includes(q.id)) save.seen.push(q.id); });
+      startQuiz(picked, "practice", lv === 0 ? "종합 연습" : SUBJ[lv] + " 연습");
     });
   } else if (svcKind === "shop") {
     title.textContent = "🛒 상점";
@@ -1552,6 +1680,22 @@ document.querySelectorAll("[data-dir]").forEach((btn) => {
   btn.addEventListener("pointerdown", (e) => { ensureAudio(); e.preventDefault(); if (!held.includes(d)) held.push(d); });
   ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, () => { if (held.includes(d)) held.splice(held.indexOf(d), 1); }));
 });
+// 원형 조이스틱: 누른 채 끌면 그 방향으로 이동, 손을 떼면 멈춤
+const joyEl = $("joy"), joyKnob = $("joy-knob"); let joyPid = null, joyDir = null;
+function joySet(d) { if (joyDir === d) return; if (joyDir) { const i = held.indexOf(joyDir); if (i >= 0) held.splice(i, 1); } joyDir = d; if (d && !held.includes(d)) held.push(d); }
+function joyReset() { joyPid = null; joySet(null); joyKnob.style.transform = "translate(0,0)"; }
+function joyMove(e) {
+  const r = joyEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, max = r.width / 2 - 30;
+  let dx = e.clientX - cx, dy = e.clientY - cy; const dist = Math.hypot(dx, dy);
+  if (dist > max) { dx = dx / dist * max; dy = dy / dist * max; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  if (dist < 16) return joySet(null);
+  joySet(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+}
+joyEl.addEventListener("pointerdown", (e) => { ensureAudio(); e.preventDefault(); joyPid = e.pointerId; try { joyEl.setPointerCapture(e.pointerId); } catch (_) {} joyMove(e); });
+joyEl.addEventListener("pointermove", (e) => { if (e.pointerId === joyPid) { e.preventDefault(); joyMove(e); } });
+["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => joyEl.addEventListener(ev, (e) => { if (e.pointerId === joyPid) joyReset(); }));
+joyEl.addEventListener("contextmenu", (e) => e.preventDefault());
 $("abtn").addEventListener("pointerdown", (e) => { ensureAudio(); e.preventDefault(); pressA(); });
 canvas.addEventListener("pointerdown", () => { ensureAudio(); if (dialog) pressA(); });
 
@@ -1620,7 +1764,7 @@ function render() {
   const people = [
     ...curMap.npcs.map((n) => ({ sheet: n.sheet, tile: n.tile, px: n.x * TILE, py: n.y * TILE, flip: false, hop: 0 })),
     ...curMonsters.map((m) => { const t = MON[m.type]; return { sheet: t.sheet || "battle", tile: t.tile, px: m.x * TILE, py: m.y * TILE, flip: m.x > player.x, big: !!t.boss, hop: Math.sin(now / 260 + m.x * 1.7) > 0.3 ? 1 : 0, ring: t.boss ? "rgba(255,40,40,0.45)" : t.guard ? "rgba(255,160,40,0.5)" : null }; }),
-    { sheet: player.sheet, tile: player.tile, cv: playerCanvas(tierOf(save.lv)), px: Math.round(player.px), py: Math.round(player.py), flip: player.dir === "left",
+    { sheet: player.sheet, tile: player.tile, cv: safePlayerCv(), px: Math.round(player.px), py: Math.round(player.py), flip: player.dir === "left",
       hop: player.moving ? Math.round(Math.abs(Math.sin(Math.min(1, player.t / MOVE_MS) * Math.PI)) * 1.5) : 0 },
   ];
   people.sort((a, b) => a.py - b.py).forEach((p) => {
@@ -1688,7 +1832,7 @@ function drawDialog(viewW, viewH) {
 // 15) 게임 시작
 // =====================================================
 let last = performance.now();
-function loop(now) { const dt = Math.min(50, now - last); last = now; update(dt); render(); requestAnimationFrame(loop); }
+function loop(now) { const dt = Math.min(50, now - last); last = now; try { update(dt); render(); } catch (err) { console.error(err); } requestAnimationFrame(loop); }
 showTitle(false); tryResume();
 loadImages().then(() => { loadMap("town", MAPS.town.spawn.x, MAPS.town.spawn.y); requestAnimationFrame(loop); TitleScene.start(); });
 </script>
