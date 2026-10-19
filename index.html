@@ -405,7 +405,7 @@ addQs(3, "전기이론·회로", 101, [
   ["평행판 콘덴서에서 극판 면적을 2배로 하면 정전용량은?", "2배", "1/2배", "4배", "변하지 않는다", "C=εS/d이므로 극판 면적에 비례해요.", 1, "정전기·콘덴서"]
 ]);
 
-const MAX_LV = 10;
+const MAX_LV = 20;
 const BADGE_NAMES = { 1: "전기설비 뱃지", 2: "전기기기 뱃지", 3: "전기이론 뱃지" };
 const newSave = () => ({
   lv: 1, exp: 0, totalExp: 0, hp: 50, hints: 3, badges: [], wrong: [], streak: {}, sound: true, music: true, coins: 0, potions: 0,
@@ -485,7 +485,7 @@ function showConflict(r) {
 function sessionExpired() { toast("로그인이 만료됐어요. 다시 로그인해 주세요."); dirty = false; session = null; try { localStorage.removeItem(SESS_KEY); } catch (e) {} showTitle(true); }
 const maxHp = () => 50 + 10 * (save.lv - 1);       // 레벨이 오르면 체력 증가
 const atkPower = () => 10 + 2 * (save.lv - 1);          // 레벨이 오르면 공격력 증가
-const expNeed = () => 120 + 70 * (save.lv - 1) + 15 * (save.lv - 1) * (save.lv - 1);       // Lv.1→2 는 120, Lv.9→10 은 1640 필요 (이전보다 훨씬 어려움)
+const expNeed = () => save.lv <= 9 ? 120 + 70 * (save.lv - 1) + 15 * (save.lv - 1) * (save.lv - 1) : 1640 + 300 * (save.lv - 9);       // Lv.1→2 는 120, Lv.9→10 은 1640 필요 (이전보다 훨씬 어려움)
 
 // =====================================================
 // 3-2) 레벨에 따라 바뀌는 캐릭터 색 (2레벨마다 단계 상승)
@@ -498,6 +498,7 @@ const TIERS = [
   { name: "초록 안전모",  lv: "Lv.5~6",  hat: ["#3fae5a", "#9be3a2", "#25703a"].map(rgb), suit: ["#d4e8d0", "#8fbf8c", "#3f6b45"].map(rgb) },
   { name: "보라 안전모",  lv: "Lv.7~8",  hat: ["#8a4fd1", "#c9a0ff", "#55308a"].map(rgb), suit: ["#d8c9f0", "#a58fcb", "#54407c"].map(rgb) },
   { name: "황금 안전모",  lv: "Lv.9~10", hat: ["#f2c230", "#fff2a0", "#b8861a"].map(rgb), suit: ["#f7e2b0", "#d9a24a", "#8a3a1a"].map(rgb) },
+  { name: "백금 안전모",  lv: "Lv.11~",  hat: ["#e6edf5", "#ffffff", "#9fb0c4"].map(rgb), suit: ["#dfe9f5", "#a9bfd8", "#3e5f8a"].map(rgb) },
 ];
 const tierOf = (lv) => Math.min(TIERS.length - 1, Math.floor((lv - 1) / 2));
 const playerCvs = [];
@@ -1159,6 +1160,7 @@ function finishBattle() {
     if (t.final) {
       const first = !save.cleared; save.cleared = true;
       html += `<br>🏆 <b>모든 지역을 정복했다! 전기기능사 필기 정복 완료!</b>` + (first ? `<br>마을의 전기 박사에게 돌아가 보자.` : "");
+      html += `<br>📝 <b>모의고사도 도전해봐!!</b> (마을 → 모의고사)`;
       if (first) setTimeout(SFX.level, 1400);
     }
     if (t.boss && t.badge) {
@@ -1185,7 +1187,7 @@ function closeBattle(result) {
   if (result === "win") { defeated.add(curMap.id + ":" + mon.id); curMonsters = curMonsters.filter((m) => m.id !== mon.id); }
   if (result === "win" && MON[mon.type].boss) {                                    // 보스를 쓰러뜨리면 마을로 이동
     const ex = curMap.exits && curMap.exits[0];
-    if (ex) { paintPlayer(); startTransition(() => { loadMap(ex.to, ex.tx, ex.ty); toast("🏆 보스를 쓰러뜨리고 마을로 돌아왔어요! 체력도 모두 회복됐어요.", 4500); }); }
+    if (ex) { paintPlayer(); startTransition(() => { loadMap(ex.to, ex.tx, ex.ty); toast(MON[mon.type].final ? "🏆 4번째 보스 클리어! 📝 모의고사도 도전해봐!!" : "🏆 보스를 쓰러뜨리고 마을로 돌아왔어요! 체력도 모두 회복됐어요.", 5000); }); }
   }
   if (result === "lose") startTransition(() => loadMap("town", 11, 6));
   updateHUD();
@@ -1337,10 +1339,10 @@ function closeSvc() {
 $("svc-close").onclick = closeSvc;
 
 const SHOP = [
-  { name: "💡 힌트 ×1",       desc: "보기 2개를 지워 줘요",           cost: 8,  give: () => { save.hints += 1; } },
-  { name: "💡 힌트 ×5 묶음",  desc: "힌트 5개 (조금 더 싸요)",         cost: 35, give: () => { save.hints += 5; } },
-  { name: "🧪 회복약 ×1",     desc: "전투 중 HP를 40% 회복해요",       cost: 15, give: () => { save.potions += 1; } },
-  { name: "🧪 회복약 ×3 묶음", desc: "회복약 3개 (조금 더 싸요)",       cost: 40, give: () => { save.potions += 3; } },
+  { name: "💡 힌트 ×1",       desc: "보기 2개를 지워 줘요",           cost: 25,  give: () => { save.hints += 1; } },
+  { name: "💡 힌트 ×5 묶음",  desc: "힌트 5개 (조금 더 싸요)",         cost: 110, give: () => { save.hints += 5; } },
+  { name: "🧪 회복약 ×1",     desc: "전투 중 HP를 40% 회복해요",       cost: 45, give: () => { save.potions += 1; } },
+  { name: "🧪 회복약 ×3 묶음", desc: "회복약 3개 (조금 더 싸요)",       cost: 125, give: () => { save.potions += 3; } },
 ];
 function renderSvc() {
   if (mock) { mock.done ? null : renderMock(); return; }
@@ -1436,7 +1438,7 @@ function renderAdmin() {
   const tg = (k, label) => `<button class="hbtn ${admin[k] ? "on" : ""}" data-tg="${k}">${label}: ${admin[k] ? "ON" : "OFF"}</button>`;
   h += `<hr style="border:0;border-top:1px solid #2c3a4d;margin:12px 0"><div class="sub"><b>모드</b></div><div class="mrow">${tg("noclip", "👻 벽 통과")}${tg("god", "🛡 무적")}${tg("oneshot", "⚔ 한 방 처치")}${tg("reveal", "🗺 지도 전체 공개")}</div>
     <div class="sub"><b>지급·설정</b></div><div class="mrow"><button class="hbtn" data-act="badges">🏅 뱃지 3개 받기</button><button class="hbtn" data-act="items">🔑 이 맵 퓨즈/열쇠 전부</button><button class="hbtn" data-act="gate">🚪 보스 문 열기</button><button class="hbtn" data-act="supplies">🪙💡🧪 +20</button><button class="hbtn" data-act="heal">❤ 체력 회복</button></div>
-    <div class="mrow">레벨 설정: <input id="adm-lv" type="number" min="1" max="10" value="${save.lv}" style="width:70px;padding:6px;border-radius:6px;border:1px solid #3a4c64;background:#0b1119;color:#fff"> <button class="hbtn" data-act="level">적용</button></div>`;
+    <div class="mrow">레벨 설정: <input id="adm-lv" type="number" min="1" max="20" value="${save.lv}" style="width:70px;padding:6px;border-radius:6px;border:1px solid #3a4c64;background:#0b1119;color:#fff"> <button class="hbtn" data-act="level">적용</button></div>`;
   body.innerHTML = h;
   body.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { const [map, x, y] = b.dataset.go.split("|"); adminTo(map, +x, +y); });
   body.querySelectorAll("[data-tg]").forEach((b) => b.onclick = () => { admin[b.dataset.tg] = !admin[b.dataset.tg]; if (b.dataset.tg === "reveal") revealAround(); renderAdmin(); });
@@ -1577,7 +1579,8 @@ const ACHS = [
   { id: "badge3", name: "이론 뱃지", desc: "전기이론 뱃지 획득", title: "이론 마스터", ok: (s) => s.badges.includes(3) },
   { id: "cleared", name: "전기기능사 정복", desc: "합격 대마왕 처치", title: "전기기능사 정복자", ok: (s) => !!s.cleared },
   { id: "lv5", name: "Lv.5 달성", desc: "레벨 5에 도달", title: "중급 전기공", ok: (s) => s.lv >= 5 },
-  { id: "lv10", name: "Lv.10 달성", desc: "최고 레벨에 도달", title: "전설의 전기공", ok: (s) => s.lv >= 10 },
+  { id: "lv10", name: "Lv.10 달성", desc: "레벨 10에 도달", title: "전설의 전기공", ok: (s) => s.lv >= 10 },
+  { id: "lv20", name: "Lv.20 달성", desc: "최고 레벨에 도달", title: "전기의 신", ok: (s) => s.lv >= 20 },
   { id: "mock_pass", name: "모의고사 합격", desc: "모의고사 60점 이상", title: "모의고사 합격자", ok: (s) => s.mock.passes >= 1 },
   { id: "mock80", name: "합격권 진입", desc: "모의고사 80점 이상", title: "합격 유력", ok: (s) => s.mock.best >= 80 },
   { id: "mock90", name: "고득점자", desc: "모의고사 90점 이상", title: "고득점자", ok: (s) => s.mock.best >= 90 },
