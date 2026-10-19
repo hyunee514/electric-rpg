@@ -46,6 +46,14 @@
   .scene.dungeon { background: linear-gradient(#2a2f45 0 52%, #5a2a2a 52% 100%); }
   .scene.dungeon.boss { background: linear-gradient(#3a2147 0 52%, #4a1f2f 52% 100%); }
   .scene canvas { position: absolute; width: 112px; height: 112px; image-rendering: pixelated; }
+  .combofx { position: absolute; left: 50%; top: 42%; z-index: 6; font-weight: 900; white-space: nowrap; pointer-events: none; letter-spacing: 1px; -webkit-text-stroke: 2px #3a1d0a; paint-order: stroke fill; text-shadow: 0 3px 0 #b3481a, 0 0 14px #ff9b3a; animation: comboPop 1s ease-out forwards; }
+  @keyframes comboPop { 0% { transform: translate(-50%,-50%) scale(.3) rotate(-8deg); opacity: 0; } 20% { transform: translate(-50%,-50%) scale(1.45) rotate(3deg); opacity: 1; } 45% { transform: translate(-50%,-50%) scale(1) rotate(0); opacity: 1; } 100% { transform: translate(-50%,-110%) scale(1); opacity: 0; } }
+  .spark { position: absolute; left: 50%; top: 42%; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 5; animation: sparkOut .7s ease-out forwards; }
+  @keyframes sparkOut { from { transform: translate(0,0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; } }
+  .scene.flash::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff8 0%, #ffd16655 50%, transparent 80%); animation: flashOut .45s ease-out forwards; pointer-events: none; z-index: 4; }
+  @keyframes flashOut { from { opacity: 1; } to { opacity: 0; } }
+  .box.danger { animation: dangerBlink .5s steps(2) 6; }
+  @keyframes dangerBlink { 0% { border-color: #ff2b2b; box-shadow: 0 0 12px #ff2b2b; } 100% { border-color: #f5e6a8; box-shadow: none; } }
   #foeSpr { right: 12%; top: 14px; } #meSpr { left: 12%; bottom: 6px; }
   .box { position: absolute; width: 46%; background: #101828dd; border: 2px solid #f5e6a8; border-radius: 8px; padding: 5px 8px; font-size: 12px; }
   #foeBox { left: 8px; top: 10px; } #meBox { right: 8px; bottom: 10px; }
@@ -425,6 +433,8 @@ const SFX = {
   hit()   { tone(300, .08, "square", .06); tone(150, .12, "square", .06, .05); },
   win()   { [523, 659, 784, 1047].forEach((f, i) => tone(f, .16, "square", .05, i * .12)); },
   lose()  { [400, 330, 260, 200].forEach((f, i) => tone(f, .2, "triangle", .06, i * .15)); },
+  combo(n) { const b = 523 * Math.pow(1.122, Math.min(n, 8)); [b, b * 1.26, b * 1.5, b * 2].forEach((f, i) => tone(f, .09, "square", .05, i * .06)); },
+  danger() { for (let i = 0; i < 3; i++) { tone(880, .14, "sawtooth", .07, i * .34); tone(587, .14, "sawtooth", .07, i * .34 + .17); } },
   level() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .12, "square", .05, i * .09)); },
 };
 
@@ -647,13 +657,13 @@ const MAPS = {
     ],
     buildings: [
       { x: 4,  y: 3, style: "gray", gate: { label: "공장 지역", color: "#e07a1f", requires: 1,
-          goto: { map: "field2", x: 24, y: 40 },
+          goto: { map: "field2", x: 37, y: 51 },
           lines: ["이곳은 공장 지역! (2단계: 전기기기)", "기계 로봇들이 우글거리는 공장이다. 중앙 보스실의 문을 열려면 부품 3개가 필요하다.", "준비됐으면 들어가 보자!"] } },
       { x: 10, y: 3, style: "red",  gate: { label: "전투 지역", color: "#c0392b",
-          goto: { map: "field1", x: 22, y: 34 },
+          goto: { map: "field1", x: 29, y: 49 },
           lines: ["이곳은 전투 지역! (1단계: 전기설비)", "갈래길을 탐험해 수문장들에게서 퓨즈 3개를 모으고, 보스를 잡아 뱃지를 얻자!", "준비됐으면 들어가 보자!"] } },
       { x: 19, y: 3, style: "gray", gate: { label: "던전 지역", color: "#6b4fa0", requires: 2,
-          goto: { map: "field3", x: 6, y: 39 },
+          goto: { map: "field3", x: 41, y: 49 },
           lines: ["이곳은 던전 지역! (3단계: 전기이론·회로)", "어둡고 깊은 지하 미궁이다. 보스의 문을 열려면 열쇠 3개가 필요하다.", "준비됐으면 들어가 보자!"] } },
       { x: 25, y: 3, style: "red",  gate: { label: "농장 지역", color: "#3a8f3a", requires: [1, 2, 3],
           goto: { map: "field4", x: 23, y: 35 },
@@ -875,7 +885,7 @@ function startBattle(mon) {
   $("scene").classList.toggle("boss", !!t.boss); $("scene").classList.toggle("factory", curMap.theme === "factory"); $("scene").classList.toggle("dungeon", curMap.theme === "dungeon"); $("scene").classList.toggle("farm", curMap.theme === "farm");
   paintSprite($("foeSpr"), t.sheet || "battle", t.tile, false); paintPlayer();
   $("foeName").textContent = (t.boss ? "👑 " : "") + t.name; $("meName").textContent = "Lv." + save.lv + " 전기공";
-  refreshBattleBars();
+  refreshBattleBars(); if (save.hp > 0 && save.hp / maxHp() <= .25) dangerAlert();
   nextQuestion(t.boss ? `보스 <b>${t.name}</b>이(가) 나타났다!` : t.guard ? `길을 막고 있던 <b>${t.name}</b>과(와) 전투 시작!` : `<b>${t.name}</b>이(가) 나타났다!`);
   updateHUD();
 }
@@ -926,6 +936,18 @@ function popDamage(text, color, where) {
   if (where === "foe") { el.style.right = "22%"; el.style.top = "40px"; } else { el.style.left = "20%"; el.style.bottom = "90px"; }
   $("scene").appendChild(el); setTimeout(() => el.remove(), 950);
 }
+function comboEffect(n) {                                               // 연속 정답 이펙트: 글자 + 불꽃 + 번쩍임 + 효과음
+  const sc = $("scene"), col = n >= 6 ? "#ff4d6d" : n >= 4 ? "#ff9b3a" : "#ffe36b";
+  const t = document.createElement("div"); t.className = "combofx"; t.style.color = col; t.style.fontSize = Math.min(44, 24 + n * 3) + "px"; t.textContent = (n >= 6 ? "🔥🔥 " : "🔥 ") + n + " COMBO!";
+  sc.appendChild(t); setTimeout(() => t.remove(), 1050);
+  for (let i = 0; i < 6 + Math.min(n, 6) * 2; i++) {
+    const p = document.createElement("div"), a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 60; p.className = "spark";
+    p.style.background = ["#ffe36b", "#ff9b3a", "#fff", "#7fe3ff"][i % 4]; p.style.setProperty("--dx", Math.cos(a) * r + "px"); p.style.setProperty("--dy", Math.sin(a) * r + "px");
+    sc.appendChild(p); setTimeout(() => p.remove(), 750);
+  }
+  sc.classList.remove("flash"); void sc.offsetWidth; sc.classList.add("flash"); setTimeout(() => sc.classList.remove("flash"), 500);
+  setTimeout(() => SFX.combo(n), 250);
+}
 function shakeEl(el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
 
 function noteUpdate(q, right, ctx) {                                      // 오답노트·통계 갱신 (전투/연습/복습/모의고사 공통)
@@ -955,10 +977,11 @@ function choose(k) {
     const mult = 1 + 0.25 * Math.min(battle.combo, 4); let dmg = Math.round(atkPower() * mult); if (admin.oneshot) dmg = battle.max;
     battle.hp -= dmg; battle.combo++; battle.right++; battle.exp += 4; save.coins++; battle.coins++;
     save.cnt.maxCombo = Math.max(save.cnt.maxCombo, battle.combo); questEvent("combo", battle.combo);
-    SFX.ok(); setTimeout(SFX.hit, 180); shakeEl($("foeSpr")); popDamage("-" + dmg, "#ffd166", "foe");
+    SFX.ok(); setTimeout(SFX.hit, 180); shakeEl($("foeSpr")); popDamage("-" + dmg, "#ffd166", "foe"); if (battle.combo >= 2) comboEffect(battle.combo);
     msg = `✅ <b>정답!</b> ${t.name}에게 <b>${dmg}</b> 데미지!` + (mult > 1 ? ` (콤보 ×${mult.toFixed(2)})` : "");
   } else {
-    const dmg = admin.god ? 0 : t.atk; save.hp = Math.max(0, save.hp - dmg);
+    const dmg = admin.god ? 0 : t.atk, wasR = save.hp / maxHp(); save.hp = Math.max(0, save.hp - dmg);
+    if (save.hp > 0 && save.hp / maxHp() <= .25 && wasR > .25) dangerAlert();
     const lost = battle.combo; battle.combo = 0; battle.wrong++; battle.exp += 1;
     SFX.ng(); setTimeout(SFX.hit, 220); shakeEl($("meSpr")); popDamage("-" + dmg, "#ff6b6b", "me");
     msg = `❌ <b>오답…</b> ${t.name}의 반격! HP -${dmg}` + (lost >= 2 ? ` (${lost}연속 콤보 끊김)` : "");
@@ -970,6 +993,9 @@ function choose(k) {
   $("bhint").style.display = "none"; $("brun").style.display = "none"; $("bpot").style.display = "none";
   $("bnext").style.display = ""; $("bnext").textContent = battle.over ? "결과 보기 ▶" : "다음 문제 ▶";
   updateBattleMeta(); writeSave(); updateHUD();
+}
+function dangerAlert() {                                                // HP가 빨강(25% 이하)이 되는 순간 경고음 + 깜빡임
+  setTimeout(SFX.danger, 450); const b = $("meBox"); b.classList.remove("danger"); void b.offsetWidth; b.classList.add("danger");
 }
 function usePotion() {
   if (!battle || battle.state !== "q" || save.potions <= 0 || save.hp >= maxHp()) return;
@@ -1267,7 +1293,7 @@ function freeNear(m, x, y) {                                              // (x,
   for (let r = 1; r <= 4; r++) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) if (ok(x + dx * r, y + dy * r)) return { x: x + dx * r, y: y + dy * r };
   return { x, y };
 }
-function adminTo(map, x, y) { $("adm").style.display = "none"; startTransition(() => loadMap(map, x, y)); }
+function adminTo(map, x, y) { $("adm").style.display = "none"; [...defeated].forEach((k) => { if (k.startsWith(map + ":")) defeated.delete(k); }); startTransition(() => loadMap(map, x, y)); }
 function renderAdmin() {
   const body = $("adm-body"), esc2 = escHtml;
   let h = `<div class="mrow"><button class="hbtn" data-go="town|${MAPS.town.spawn.x}|${MAPS.town.spawn.y}">🏠 전기 마을</button></div>`;
@@ -1592,11 +1618,16 @@ function render() {
   const now = performance.now();
   const people = [
     ...curMap.npcs.map((n) => ({ sheet: n.sheet, tile: n.tile, px: n.x * TILE, py: n.y * TILE, flip: false, hop: 0 })),
-    ...curMonsters.map((m) => { const t = MON[m.type]; return { sheet: t.sheet || "battle", tile: t.tile, px: m.x * TILE, py: m.y * TILE, flip: m.x > player.x, hop: Math.sin(now / 260 + m.x * 1.7) > 0.3 ? 1 : 0, ring: t.boss ? "rgba(255,40,40,0.45)" : t.guard ? "rgba(255,160,40,0.5)" : null }; }),
+    ...curMonsters.map((m) => { const t = MON[m.type]; return { sheet: t.sheet || "battle", tile: t.tile, px: m.x * TILE, py: m.y * TILE, flip: m.x > player.x, big: !!t.boss, hop: Math.sin(now / 260 + m.x * 1.7) > 0.3 ? 1 : 0, ring: t.boss ? "rgba(255,40,40,0.45)" : t.guard ? "rgba(255,160,40,0.5)" : null }; }),
     { sheet: player.sheet, tile: player.tile, cv: playerCanvas(tierOf(save.lv)), px: Math.round(player.px), py: Math.round(player.py), flip: player.dir === "left",
       hop: player.moving ? Math.round(Math.abs(Math.sin(Math.min(1, player.t / MOVE_MS) * Math.PI)) * 1.5) : 0 },
   ];
-  people.sort((a, b) => a.py - b.py).forEach((p) => drawSprite(p.sheet, p.tile, p.px, p.py, p.flip, p.hop, p.ring, p.cv));
+  people.sort((a, b) => a.py - b.py).forEach((p) => {
+    if (!p.big) return drawSprite(p.sheet, p.tile, p.px, p.py, p.flip, p.hop, p.ring, p.cv);
+    const pulse = 0.35 + 0.15 * Math.sin(now / 250);                       // 보스는 1.6배 크기 + 붉은 오라로 눈에 띄게
+    ctx.fillStyle = `rgba(255,40,40,${pulse})`; ctx.beginPath(); ctx.ellipse(p.px + 8, p.py + 14, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(p.px + 8, p.py + 15 - p.hop); ctx.scale(p.flip ? -1.6 : 1.6, 1.6); drawTile(p.sheet, p.tile, -8, -15); ctx.restore();
+  });
 
   ctx.font = `bold 6px ${FONT}`; ctx.textBaseline = "middle"; ctx.textAlign = "center";
   for (const b of curMap.buildings) {
@@ -1606,7 +1637,7 @@ function render() {
   }
   for (const m of curMonsters) {
     const t = MON[m.type]; if (!t.boss && !t.guard) continue;
-    const txt = t.boss ? "BOSS" : "수문장", cx = m.x * TILE + 8, cy = m.y * TILE - 4, w = ctx.measureText(txt).width + 8;
+    const txt = t.boss ? "BOSS" : "수문장", cx = m.x * TILE + 8, cy = m.y * TILE - (t.boss ? 14 : 4), w = ctx.measureText(txt).width + 8;
     ctx.fillStyle = t.boss ? "#b3202a" : "#d9731a"; ctx.fillRect(cx - w / 2, cy - 5, w, 10); ctx.fillStyle = "#fff"; ctx.fillText(txt, cx, cy + 0.5);
   }
   ctx.restore();
